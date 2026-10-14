@@ -1,0 +1,377 @@
+/* ==========================================================================
+   Wayfarer — AI Travel Planner
+   Design concept: a travel agency's ticket desk. The form lives on a
+   boarding-pass stub (perforated edge, route line, mono flight numbers);
+   generated plans render as matching boarding passes on the right, one per
+   prompting technique, so you can lay a few side by side and compare.
+   ========================================================================== */
+
+:root {
+  --ink: #101B2D;
+  --ink-soft: #2C3B52;
+  --paper: #F5F6F3;
+  --paper-raised: #FFFFFF;
+  --coral: #FF6A4D;
+  --coral-dark: #E14F33;
+  --brass: #C89B3C;
+  --teal: #1F6F6B;
+  --line: #D9DCD3;
+  --line-strong: #B9BEB2;
+  --shadow: 0 18px 40px -20px rgba(16, 27, 45, 0.35);
+
+  --font-display: "Fraunces", Georgia, serif;
+  --font-body: "Inter", -apple-system, BlinkMacSystemFont, sans-serif;
+  --font-mono: "JetBrains Mono", monospace;
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+  margin: 0;
+  padding: 0;
+  background: var(--paper);
+  color: var(--ink);
+  font-family: var(--font-body);
+  -webkit-font-smoothing: antialiased;
+}
+
+h1, h2, h3 { font-family: var(--font-display); margin: 0; }
+
+button { font-family: inherit; cursor: pointer; }
+
+.hidden { display: none !important; }
+
+.app {
+  display: grid;
+  grid-template-columns: 380px 1fr;
+  min-height: 100vh;
+}
+
+/* ============================== TICKET / FORM ============================== */
+
+.ticket {
+  background: var(--ink);
+  color: var(--paper);
+  padding: 36px 32px 40px;
+  position: relative;
+  overflow-y: auto;
+}
+
+.brand { display: flex; align-items: center; gap: 12px; margin-bottom: 18px; }
+.brand__mark { width: 30px; height: 30px; color: var(--coral); transform: rotate(-8deg); }
+.brand__text { display: flex; flex-direction: column; line-height: 1.15; }
+.brand__name { font-family: var(--font-display); font-size: 22px; font-weight: 600; letter-spacing: 0.01em; }
+.brand__sub { font-size: 12px; color: #93A0B5; }
+
+.ticket__lede {
+  font-size: 14px;
+  line-height: 1.55;
+  color: #C7CEDA;
+  margin: 0 0 28px;
+  max-width: 34ch;
+}
+
+.ticket__form { display: flex; flex-direction: column; gap: 18px; }
+
+.field { display: flex; flex-direction: column; gap: 7px; }
+.field-row { display: flex; gap: 12px; }
+.field-row .field { flex: 1; }
+.field-row .field--narrow { flex: 0 0 84px; }
+
+label { font-size: 12.5px; font-weight: 600; color: #C7CEDA; letter-spacing: 0.01em; }
+.field__hint { font-weight: 400; color: #7E8AA0; }
+
+input[type="text"], input[type="number"] {
+  background: #1B2942;
+  border: 1px solid #33456A;
+  border-radius: 8px;
+  padding: 11px 12px;
+  color: var(--paper);
+  font-size: 14.5px;
+  font-family: var(--font-body);
+  outline: none;
+  transition: border-color 0.15s ease;
+}
+input[type="text"]::placeholder, input[type="number"]::placeholder { color: #5C6C89; }
+input[type="text"]:focus, input[type="number"]:focus { border-color: var(--coral); }
+
+.budget-input { display: flex; align-items: center; background: #1B2942; border: 1px solid #33456A; border-radius: 8px; padding: 0 12px; }
+.budget-input span { color: #7E8AA0; font-size: 14px; }
+.budget-input input { background: transparent; border: none; padding: 11px 6px; flex: 1; }
+.budget-input:focus-within { border-color: var(--coral); }
+
+.chips { display: flex; flex-wrap: wrap; gap: 8px; }
+.chip {
+  background: #1B2942;
+  border: 1px solid #33456A;
+  color: #C7CEDA;
+  border-radius: 999px;
+  padding: 7px 13px;
+  font-size: 12.5px;
+  font-weight: 500;
+  transition: all 0.15s ease;
+}
+.chip:hover { border-color: var(--brass); }
+.chip.is-selected { background: var(--brass); border-color: var(--brass); color: var(--ink); font-weight: 600; }
+
+.segmented { display: flex; background: #1B2942; border: 1px solid #33456A; border-radius: 8px; padding: 3px; }
+.segmented__opt { flex: 1; background: transparent; border: none; color: #93A0B5; padding: 9px 0; border-radius: 6px; font-size: 13px; font-weight: 600; }
+.segmented__opt.is-active { background: var(--coral); color: white; }
+
+.ticket__perforation {
+  height: 0;
+  border-top: 2px dashed #33456A;
+  margin: 6px -32px;
+  position: relative;
+}
+.ticket__perforation::before, .ticket__perforation::after {
+  content: "";
+  position: absolute;
+  top: -10px;
+  width: 20px; height: 20px;
+  background: var(--paper);
+  border-radius: 50%;
+}
+.ticket__perforation::before { left: -10px; }
+.ticket__perforation::after { right: -10px; }
+
+.technique-list { display: flex; flex-direction: column; gap: 8px; }
+.technique-opt {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  column-gap: 10px;
+  row-gap: 2px;
+  background: #1B2942;
+  border: 1px solid #33456A;
+  border-radius: 8px;
+  padding: 10px 12px;
+  cursor: pointer;
+  transition: border-color 0.15s ease;
+}
+.technique-opt input { grid-row: 1 / 3; align-self: center; accent-color: var(--coral); }
+.technique-opt__title { font-size: 13.5px; font-weight: 700; color: var(--paper); }
+.technique-opt__desc { font-size: 12px; color: #93A0B5; grid-column: 2; }
+.technique-opt.is-active, .technique-opt:has(input:checked) { border-color: var(--coral); background: #24314E; }
+
+.btn-primary {
+  margin-top: 6px;
+  background: var(--coral);
+  color: white;
+  border: none;
+  border-radius: 8px;
+  padding: 13px 16px;
+  font-size: 14.5px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  transition: background 0.15s ease, transform 0.1s ease;
+}
+.btn-primary:hover { background: var(--coral-dark); }
+.btn-primary:active { transform: scale(0.98); }
+.btn-primary:disabled { opacity: 0.6; cursor: not-allowed; }
+
+.btn-secondary {
+  background: transparent;
+  border: 1px solid #33456A;
+  color: #C7CEDA;
+  border-radius: 8px;
+  padding: 11px 16px;
+  font-size: 13.5px;
+  font-weight: 600;
+}
+.btn-secondary:hover { border-color: var(--brass); color: var(--brass); }
+
+/* ============================== RESULTS PANEL ============================== */
+
+.results {
+  padding: 44px 48px 60px;
+  overflow-y: auto;
+}
+
+.results__header { max-width: 60ch; margin-bottom: 32px; }
+.results__header h1 { font-size: 30px; font-weight: 600; }
+.results__header p { color: var(--ink-soft); font-size: 14.5px; margin-top: 8px; }
+
+.empty-state, .loading-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  color: var(--line-strong);
+  padding: 80px 20px;
+  gap: 18px;
+}
+.empty-state__art { width: 200px; height: 120px; color: var(--line-strong); }
+.empty-state p { max-width: 36ch; font-size: 14.5px; color: #8B9088; }
+
+.loading-plane { width: 48px; height: 48px; color: var(--coral); animation: fly 1.1s ease-in-out infinite; }
+@keyframes fly {
+  0%, 100% { transform: translateX(-10px) translateY(0) rotate(-4deg); }
+  50% { transform: translateX(10px) translateY(-6px) rotate(4deg); }
+}
+.loading-state p { font-size: 14px; color: var(--ink-soft); font-weight: 500; }
+
+.error-state {
+  background: #FDECEA;
+  border: 1px solid #F4B8AE;
+  color: #8A2E1E;
+  border-radius: 10px;
+  padding: 16px 18px;
+  font-size: 14px;
+  max-width: 70ch;
+  line-height: 1.5;
+}
+
+/* ---- Boarding pass cards ---- */
+
+#single-result, #compare-result { display: flex; flex-wrap: wrap; gap: 26px; }
+
+.pass {
+  background: var(--paper-raised);
+  border-radius: 14px;
+  box-shadow: var(--shadow);
+  border: 1px solid var(--line);
+  width: 100%;
+  max-width: 620px;
+  overflow: hidden;
+}
+#compare-result .pass { max-width: 100%; flex: 1 1 420px; }
+
+.pass__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 20px 24px 14px;
+}
+.pass__route { display: flex; align-items: center; gap: 10px; flex: 1; min-width: 0; }
+.pass__from, .pass__to {
+  font-family: var(--font-mono);
+  font-weight: 500;
+  font-size: 13px;
+  letter-spacing: 0.06em;
+  color: var(--ink-soft);
+  white-space: nowrap;
+}
+.pass__to { color: var(--ink); font-weight: 700; overflow: hidden; text-overflow: ellipsis; text-transform: uppercase; }
+.pass__path { flex: 1; height: 20px; color: var(--line-strong); min-width: 40px; }
+
+.pass__technique-badge {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  padding: 6px 11px;
+  border-radius: 999px;
+  white-space: nowrap;
+  background: #EFE6D0;
+  color: #8A6A18;
+}
+.pass__technique-badge[data-tech="few-shot"] { background: #DCEDEA; color: var(--teal); }
+.pass__technique-badge[data-tech="structured"] { background: #FDE4DD; color: var(--coral-dark); }
+
+.pass__meta {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 12px;
+  padding: 0 24px 18px;
+}
+.pass__meta > div { display: flex; flex-direction: column; gap: 3px; }
+.pass__meta-label { font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.05em; color: #9AA098; }
+.pass__meta span:last-child { font-size: 13.5px; font-weight: 600; color: var(--ink); }
+
+.pass__perforation {
+  height: 0;
+  border-top: 2px dashed var(--line-strong);
+  margin: 0 0 4px;
+  position: relative;
+}
+.pass__perforation::before, .pass__perforation::after {
+  content: "";
+  position: absolute;
+  top: -9px;
+  width: 18px; height: 18px;
+  background: var(--paper);
+  border-radius: 50%;
+}
+.pass__perforation::before { left: -9px; }
+.pass__perforation::after { right: -9px; }
+
+.pass__body { padding: 20px 24px 4px; }
+
+.pass__footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 24px 20px;
+  font-size: 12px;
+  color: #9AA098;
+}
+.pass__actions { display: flex; gap: 14px; }
+.pass__action { background: none; border: none; color: var(--teal); font-weight: 600; font-size: 12.5px; padding: 0; }
+.pass__action:hover { text-decoration: underline; }
+
+/* ---- Markdown body rendering ---- */
+
+.markdown-body h2 { font-size: 15px; text-transform: uppercase; letter-spacing: 0.04em; color: var(--brass); margin: 18px 0 8px; }
+.markdown-body h2:first-child { margin-top: 0; }
+.markdown-body h3 { font-size: 16.5px; margin: 16px 0 6px; color: var(--ink); }
+.markdown-body p { font-size: 14px; line-height: 1.6; color: var(--ink-soft); margin: 0 0 10px; }
+.markdown-body ul { margin: 0 0 10px; padding-left: 20px; }
+.markdown-body li { font-size: 14px; line-height: 1.65; color: var(--ink-soft); margin-bottom: 4px; }
+.markdown-body strong { color: var(--ink); }
+.markdown-body em { color: var(--teal); font-style: normal; font-weight: 600; font-size: 13px; }
+
+/* ---- History ---- */
+
+.history { margin-top: 46px; }
+.history h2 { font-size: 15px; text-transform: uppercase; letter-spacing: 0.04em; color: var(--ink-soft); margin-bottom: 14px; }
+.history__list { display: flex; flex-wrap: wrap; gap: 10px; }
+.history__item {
+  background: var(--paper-raised);
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  padding: 8px 15px;
+  font-size: 12.5px;
+  color: var(--ink-soft);
+  font-weight: 500;
+}
+.history__item b { color: var(--ink); }
+
+/* ---- Prompt viewer (dialog) ---- */
+
+.prompt-modal-backdrop {
+  position: fixed; inset: 0; background: rgba(16,27,45,0.55);
+  display: flex; align-items: center; justify-content: center;
+  padding: 30px; z-index: 40;
+}
+.prompt-modal {
+  background: white; border-radius: 12px; max-width: 720px; width: 100%;
+  max-height: 80vh; overflow-y: auto; padding: 26px 28px; box-shadow: var(--shadow);
+}
+.prompt-modal h3 { font-size: 16px; margin-bottom: 12px; }
+.prompt-modal pre {
+  white-space: pre-wrap; font-family: var(--font-mono); font-size: 12.5px;
+  line-height: 1.6; color: var(--ink-soft); background: var(--paper); padding: 14px;
+  border-radius: 8px; border: 1px solid var(--line);
+}
+.prompt-modal button { margin-top: 16px; background: var(--ink); color: white; border: none; border-radius: 8px; padding: 10px 16px; font-weight: 600; font-size: 13px; }
+
+/* ---- Responsive ---- */
+
+@media (max-width: 880px) {
+  .app { grid-template-columns: 1fr; }
+  .ticket { position: static; }
+  .results { padding: 32px 20px 50px; }
+  .pass__meta { grid-template-columns: repeat(2, 1fr); }
+}
+
+/* ---- Print ---- */
+
+@media print {
+  .ticket, .results__header, .empty-state, .history, .pass__footer { display: none !important; }
+  body { background: white; }
+  .pass { box-shadow: none; break-inside: avoid; }
+}

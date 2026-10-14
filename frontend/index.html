@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Wayfarer — AI Travel Planner</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/marked/9.1.6/marked.min.js"></script>
+<link rel="stylesheet" href="style.css" />
+</head>
+<body>
+
+<div class="app">
+
+  <!-- ===================== LEFT: TICKET / FORM PANEL ===================== -->
+  <aside class="ticket" id="ticket">
+    <div class="ticket__top">
+      <div class="brand">
+        <svg viewBox="0 0 48 48" class="brand__mark" aria-hidden="true">
+          <path d="M6 26 L42 14 L38 22 L24 24 L20 34 L14 32 L16 24 L6 26Z" fill="currentColor"/>
+        </svg>
+        <div class="brand__text">
+          <span class="brand__name">Wayfarer</span>
+          <span class="brand__sub">AI itinerary desk</span>
+        </div>
+      </div>
+      <p class="ticket__lede">Tell us who's flying, and we'll route three different Gemini prompting strategies toward the same trip.</p>
+    </div>
+
+    <form id="trip-form" class="ticket__form">
+      <div class="field">
+        <label for="name">Passenger name</label>
+        <input id="name" name="name" type="text" placeholder="Alex Morgan" required maxlength="60" />
+      </div>
+
+      <div class="field-row">
+        <div class="field">
+          <label for="destination">Destination</label>
+          <input id="destination" name="destination" type="text" placeholder="Dubai, UAE" required maxlength="80" />
+        </div>
+        <div class="field field--narrow">
+          <label for="days">Days</label>
+          <input id="days" name="days" type="number" min="1" max="30" value="4" required />
+        </div>
+      </div>
+
+      <div class="field">
+        <label for="budget">Total budget (USD)</label>
+        <div class="budget-input">
+          <span>$</span>
+          <input id="budget" name="budget" type="number" min="1" step="10" placeholder="800" required />
+        </div>
+      </div>
+
+      <div class="field">
+        <label>Interests <span class="field__hint">(pick a few)</span></label>
+        <div class="chips" id="interest-chips">
+          <button type="button" class="chip" data-value="Adventure">Adventure</button>
+          <button type="button" class="chip" data-value="Food">Food</button>
+          <button type="button" class="chip" data-value="Nature">Nature</button>
+          <button type="button" class="chip" data-value="Shopping">Shopping</button>
+          <button type="button" class="chip" data-value="History">History</button>
+          <button type="button" class="chip" data-value="Beaches">Beaches</button>
+          <button type="button" class="chip" data-value="Nightlife">Nightlife</button>
+          <button type="button" class="chip" data-value="Art &amp; Culture">Art &amp; Culture</button>
+        </div>
+      </div>
+
+      <div class="field">
+        <label>Travel style</label>
+        <div class="segmented" id="travel-style" role="radiogroup">
+          <button type="button" class="segmented__opt is-active" data-value="Solo">Solo</button>
+          <button type="button" class="segmented__opt" data-value="Family">Family</button>
+          <button type="button" class="segmented__opt" data-value="Friends">Friends</button>
+        </div>
+      </div>
+
+      <div class="ticket__perforation" aria-hidden="true"></div>
+
+      <div class="field">
+        <label>Prompting technique</label>
+        <div class="technique-list" id="technique-list">
+          <label class="technique-opt is-active">
+            <input type="radio" name="technique" value="zero-shot" checked />
+            <span class="technique-opt__title">Zero-Shot</span>
+            <span class="technique-opt__desc">No examples — Gemini figures it out from scratch.</span>
+          </label>
+          <label class="technique-opt">
+            <input type="radio" name="technique" value="few-shot" />
+            <span class="technique-opt__title">Few-Shot</span>
+            <span class="technique-opt__desc">Learns from 3 example travelers first.</span>
+          </label>
+          <label class="technique-opt">
+            <input type="radio" name="technique" value="structured" />
+            <span class="technique-opt__title">Structured Reasoning</span>
+            <span class="technique-opt__desc">Follows a 6-step analysis, hides the scratch work.</span>
+          </label>
+        </div>
+      </div>
+
+      <button type="submit" class="btn-primary" id="submit-btn">
+        <span>Generate itinerary</span>
+        <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path fill="currentColor" d="M2 12l19-9-5 9 5 9-19-9zm3.5 0l10 4.7L12.5 12 15.5 7.3z"/></svg>
+      </button>
+      <button type="button" class="btn-secondary" id="compare-btn">Compare all 3 techniques</button>
+    </form>
+  </aside>
+
+  <!-- ===================== RIGHT: RESULTS PANEL ===================== -->
+  <main class="results">
+
+    <div class="results__header">
+      <h1>Your itinerary board</h1>
+      <p>Results appear here as a boarding pass for each prompting technique. Run a trip on the left to begin.</p>
+    </div>
+
+    <div id="empty-state" class="empty-state">
+      <svg viewBox="0 0 200 120" class="empty-state__art" aria-hidden="true">
+        <path d="M10 90 Q100 20 190 90" fill="none" stroke="currentColor" stroke-width="2" stroke-dasharray="6 8"/>
+        <path d="M95 82 L105 82 L112 95 L120 95 L108 78 L120 62 L112 62 L102 75 L95 75 Z" fill="currentColor"/>
+        <circle cx="10" cy="90" r="3" fill="currentColor"/>
+        <circle cx="190" cy="90" r="3" fill="currentColor"/>
+      </svg>
+      <p>No trip planned yet — fill in the form and choose a technique to see Gemini's plan.</p>
+    </div>
+
+    <div id="loading-state" class="loading-state hidden">
+      <div class="loading-plane">
+        <svg viewBox="0 0 48 48" aria-hidden="true"><path d="M6 26 L42 14 L38 22 L24 24 L20 34 L14 32 L16 24 L6 26Z" fill="currentColor"/></svg>
+      </div>
+      <p id="loading-text">Routing your request to Gemini…</p>
+    </div>
+
+    <div id="error-state" class="error-state hidden"></div>
+
+    <div id="single-result" class="hidden"></div>
+    <div id="compare-result" class="hidden"></div>
+
+    <div id="history-section" class="history hidden">
+      <h2>Recent trips</h2>
+      <div id="history-list" class="history__list"></div>
+    </div>
+
+  </main>
+</div>
+
+<template id="tpl-boarding-pass">
+  <article class="pass">
+    <header class="pass__header">
+      <div class="pass__route">
+        <span class="pass__from">YOU</span>
+        <svg viewBox="0 0 100 20" class="pass__path" aria-hidden="true"><line x1="2" y1="10" x2="98" y2="10" stroke="currentColor" stroke-width="1.5" stroke-dasharray="4 4"/><path d="M78 10 L88 6 L86 10 L88 14 Z" fill="currentColor"/></svg>
+        <span class="pass__to" data-field="destination">DEST</span>
+      </div>
+      <span class="pass__technique-badge" data-field="technique"></span>
+    </header>
+
+    <div class="pass__meta">
+      <div><span class="pass__meta-label">Passenger</span><span data-field="name"></span></div>
+      <div><span class="pass__meta-label">Duration</span><span data-field="days"></span></div>
+      <div><span class="pass__meta-label">Budget</span><span data-field="budget"></span></div>
+      <div><span class="pass__meta-label">Style</span><span data-field="style"></span></div>
+    </div>
+
+    <div class="pass__perforation" aria-hidden="true"></div>
+
+    <div class="pass__body markdown-body" data-field="itinerary"></div>
+
+    <footer class="pass__footer">
+      <span data-field="time"></span>
+      <div class="pass__actions">
+        <button type="button" class="pass__action" data-action="print">Export / Print</button>
+        <button type="button" class="pass__action" data-action="prompt">View prompt used</button>
+      </div>
+    </footer>
+  </article>
+</template>
+
+<script src="script.js"></script>
+</body>
+</html>
